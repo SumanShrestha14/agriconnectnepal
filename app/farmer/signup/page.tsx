@@ -20,6 +20,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function FarmerSignup() {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -30,6 +32,7 @@ export default function FarmerSignup() {
     farmName: "",
     location: "",
     bio: "",
+    profilePicture: "",
   });
   const router = useRouter();
   const [profileImage, setProfileImage] = useState<string>("");
@@ -43,13 +46,60 @@ export default function FarmerSignup() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password === formData.confirmPassword) {
-      // Store basic signup data
-      localStorage.setItem("farmer_signup_data", JSON.stringify(formData));
-      // Redirect to profile completion
-      router.push("/farmer/dashboard");
+
+    // Reset errors before starting
+    setError("");
+
+    // 🔒 Client-side validation
+    if (formData.password !== formData.confirmPassword) {
+      return setError("❌ Password and Confirm Password must match.");
+    }
+
+    if (formData.password.length < 6) {
+      return setError("❌ Password must be at least 6 characters long.");
+    }
+
+    if (!formData.email.includes("@") || !formData.email.includes(".")) {
+      return setError("❌ Please enter a valid email address.");
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch("/api/auth/Farmer/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullname: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phoneNumber: formData.phone,
+          FarmName: formData.farmName,
+          FarmLocation: formData.location,
+          FarmDescription: formData.bio,
+          profilePicture: formData.profilePicture,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // 🔴 Handle server-side error
+        return setError(`❌ ${data.error || "Registration failed."}`);
+      }
+
+      // ✅ Success - navigate to login
+      router.push("/farmer/login");
+    } catch (err: any) {
+      // 🔴 Handle fetch/network error
+      setError("⚠️ Network error. Please try again later.");
+      console.error("Registration error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,6 +118,12 @@ export default function FarmerSignup() {
 
         <Card className="border-2 border-green-100 shadow-2xl bg-white/90 backdrop-blur-sm">
           <CardHeader className="text-center pb-6">
+            {error && (
+              <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded relative mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mb-4">
               <Sprout className="w-8 h-8 text-white" />
             </div>

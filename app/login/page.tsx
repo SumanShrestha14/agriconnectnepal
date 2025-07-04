@@ -22,6 +22,8 @@ const LoginPage = () => {
       redirect: false,
     });
 
+    console.log(res)
+
     setLoading(false);
 
     if (res?.error) {
