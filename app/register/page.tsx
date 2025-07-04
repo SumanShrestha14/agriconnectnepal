@@ -32,7 +32,6 @@ const RegisterPage = () => {
       });
       console.log(res)
 
-      console.log("k xa hau ")
       const data = await res.json();
       console.log(data)
 
