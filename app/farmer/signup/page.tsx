@@ -1,19 +1,26 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Sprout, ArrowLeft, Eye, EyeOff } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import type React from "react";
+import { Upload } from "lucide-react";
+import { useRef } from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Sprout, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function FarmerSignup() {
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,31 +30,37 @@ export default function FarmerSignup() {
     farmName: "",
     location: "",
     bio: "",
-  })
-  const router = useRouter()
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  });
+  const router = useRouter();
+  const [profileImage, setProfileImage] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (formData.password === formData.confirmPassword) {
       // Store basic signup data
-      localStorage.setItem("farmer_signup_data", JSON.stringify(formData))
+      localStorage.setItem("farmer_signup_data", JSON.stringify(formData));
       // Redirect to profile completion
-      router.push("/farmer/complete-profile")
+      router.push("/farmer/dashboard");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-green-600 hover:text-green-700 transition-colors">
+          <Link
+            href="/"
+            className="inline-flex items-center text-green-600 hover:text-green-700 transition-colors"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
           </Link>
@@ -58,7 +71,9 @@ export default function FarmerSignup() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mb-4">
               <Sprout className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl text-green-800">Join as a Farmer</CardTitle>
+            <CardTitle className="text-2xl text-green-800">
+              Join as a Farmer
+            </CardTitle>
             <CardDescription className="text-green-600">
               Create your account and start selling your produce
             </CardDescription>
@@ -206,6 +221,70 @@ export default function FarmerSignup() {
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label className="text-green-700">Profile Picture</Label>
+                <div className="border-2 border-dashed border-green-200 rounded-lg p-8 text-center hover:border-green-300 transition-colors">
+                  {profileImage ? (
+                    <>
+                      <img
+                        src={profileImage}
+                        alt="Profile Preview"
+                        className="mx-auto rounded-full h-24 w-24 object-cover border border-green-300 mb-4"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-green-300 text-green-700 hover:bg-green-50"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Choose Another
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-12 h-12 text-green-400 mx-auto mb-4" />
+                      <p className="text-green-600 mb-2">
+                        Upload your profile picture
+                      </p>
+                      <p className="text-sm text-green-500">
+                        PNG, JPG up to 5MB
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-4 border-green-300 text-green-700 hover:bg-green-50 bg-transparent"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Choose File
+                      </Button>
+                    </>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && file.size < 5 * 1024 * 1024) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const imageDataUrl = reader.result as string;
+                          setProfileImage(imageDataUrl);
+                          setFormData((prev) => ({
+                            ...prev,
+                            profilePicture: imageDataUrl,
+                          }));
+                        };
+                        reader.readAsDataURL(file);
+                      } else {
+                        alert("Please upload a valid image under 5MB.");
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </div>
+              </div>
 
               <Button
                 type="submit"
@@ -218,7 +297,10 @@ export default function FarmerSignup() {
             <div className="mt-6 text-center">
               <p className="text-green-600">
                 Already have an account?{" "}
-                <Link href="/farmer/login" className="font-semibold text-green-700 hover:text-green-800">
+                <Link
+                  href="/farmer/login"
+                  className="font-semibold text-green-700 hover:text-green-800"
+                >
                   Sign in here
                 </Link>
               </p>
@@ -227,5 +309,5 @@ export default function FarmerSignup() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

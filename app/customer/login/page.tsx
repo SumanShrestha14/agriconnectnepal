@@ -1,42 +1,43 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Users, Eye, EyeOff, ArrowLeft } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Users, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CustomerLogin() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const router = useRouter()
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
 
   const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (email && password) {
-      // Check if profile is complete
-      const profileData = localStorage.getItem("customer_profile")
-      if (profileData) {
-        localStorage.setItem("customer_auth", "true")
-        router.push("/customer/products")
-      } else {
-        // Redirect to complete profile if not done
-        router.push("/customer/complete-profile")
-      }
+      router.push("/customer/products");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors">
+          <Link
+            href="/"
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
           </Link>
@@ -47,8 +48,12 @@ export default function CustomerLogin() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mb-4">
               <Users className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl text-blue-800">Customer Login</CardTitle>
-            <CardDescription className="text-blue-600">Welcome back! Sign in to browse fresh produce</CardDescription>
+            <CardTitle className="text-2xl text-blue-800">
+              Customer Login
+            </CardTitle>
+            <CardDescription className="text-blue-600">
+              Welcome back! Sign in to browse fresh produce
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-6">
@@ -96,7 +101,10 @@ export default function CustomerLogin() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <Link href="#" className="text-sm text-blue-600 hover:text-blue-700">
+                <Link
+                  href="#"
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -110,7 +118,10 @@ export default function CustomerLogin() {
             <div className="mt-6 text-center">
               <p className="text-blue-600">
                 Don't have an account?{" "}
-                <Link href="/customer/signup" className="font-semibold text-blue-700 hover:text-blue-800">
+                <Link
+                  href="/customer/signup"
+                  className="font-semibold text-blue-700 hover:text-blue-800"
+                >
                   Sign up here
                 </Link>
               </p>
@@ -119,5 +130,5 @@ export default function CustomerLogin() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

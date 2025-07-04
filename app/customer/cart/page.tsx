@@ -206,7 +206,7 @@ export default function CartPage() {
                   <div className="text-center py-12">
                     <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 text-lg">Your cart is empty</p>
-                    {/* <p className="text-gray-400 mt-2">Add some fresh products to get started</p> */}
+                    <p className="text-gray-400 mt-2">Add some fresh products to get started</p>
                     <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={handleContinueShopping}>
                       Continue Shopping
                     </Button>

@@ -1,14 +1,15 @@
 "use client"
 
 import type React from "react"
-
+import { useRef } from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Users, ArrowLeft, Eye, EyeOff, MapPin } from "lucide-react"
+// import { Textarea } from "@/components/ui/textarea"
+
+import { Users, ArrowLeft, Eye, EyeOff, MapPin, Upload } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -24,8 +25,12 @@ export default function CustomerSignup() {
     city: "",
     state: "",
     zipCode: "",
-    preferences: "",
+      // Profile picture
+    profilePicture: "",
+  
   })
+    const [up, setUp] = useState<string>("")
+    const fileInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -41,7 +46,7 @@ export default function CustomerSignup() {
       // Store basic signup data
       localStorage.setItem("customer_signup_data", JSON.stringify(formData))
       // Redirect to profile completion
-      router.push("/customer/complete-profile")
+      router.push("/customer/login")
     }
   }
 
@@ -115,7 +120,7 @@ export default function CustomerSignup() {
                 />
               </div>
 
-              <div className="space-y-4">
+              {/* <div className="space-y-4">
                 <Label className="text-blue-700 flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
                   Delivery Address *
@@ -156,21 +161,10 @@ export default function CustomerSignup() {
                     />
                   </div>
                 </div>
-              </div>
+              </div> */}
 
-              <div className="space-y-2">
-                <Label htmlFor="preferences" className="text-blue-700">
-                  Food Preferences (Optional)
-                </Label>
-                <Textarea
-                  id="preferences"
-                  name="preferences"
-                  placeholder="Tell us about your dietary preferences, allergies, or favorite produce..."
-                  value={formData.preferences}
-                  onChange={handleInputChange}
-                  className="border-blue-200 focus:border-blue-400 focus:ring-blue-400 min-h-[80px]"
-                />
-              </div>
+
+
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -219,7 +213,60 @@ export default function CustomerSignup() {
                   />
                 </div>
               </div>
+  <div className="space-y-2">
+  <Label htmlFor="profilePicture" className="text-blue-700">
+    Profile Picture
+  </Label>
+  <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:border-blue-300 transition-colors">
+    <Upload className="w-10 h-10 text-blue-400 mx-auto mb-3" />
+    <p className="text-blue-700 mb-1">Upload your profile picture</p>
+    <p className="text-sm text-blue-500 mb-4">PNG, JPG up to 5MB</p>
 
+    {up && (
+      <div className="mb-4">
+        <img
+          src={up}
+          alt="Preview"
+          className="mx-auto rounded-full h-24 w-24 object-cover border border-blue-300"
+        />
+      </div>
+    )}
+
+    <input
+      type="file"
+      ref={fileInputRef}
+      accept="image/*"
+      id="profilePicture"
+      onChange={(e) => {
+        const file = e.target.files?.[0]
+        if (file && file.size < 5 * 1024 * 1024) {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const imageDataUrl = reader.result as string
+            setFormData((prev) => ({
+              ...prev,
+              profilePicture: imageDataUrl,
+            }))
+            setUp(imageDataUrl)
+          }
+          reader.readAsDataURL(file)
+        } else {
+          alert("Please upload a valid image under 5MB.")
+        }
+      }}
+      className="hidden"
+    />
+
+    <Button
+      type="button"
+      variant="outline"
+      className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-50 bg-transparent"
+      onClick={() => fileInputRef.current?.click()} // ✅ trigger file picker
+    >
+      Choose File
+    </Button>
+  </div>
+</div>
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3"
