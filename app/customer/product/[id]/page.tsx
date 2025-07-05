@@ -11,6 +11,8 @@ import { Separator } from "@/components/ui/separator"
 import { Heart, ShoppingCart, Star, MapPin, Truck, Shield, Leaf, Calendar, Plus, Minus, ArrowLeft, Clock, Package, AlertCircle, CheckCircle } from "lucide-react"
 import { OrderConfirmationPopup } from "@/components/order-confirmation-popup"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { ReviewsSection } from "@/components/reviews-section"
+import { ReviewModal } from "@/components/review-modal"
 import Link from "next/link"
 
 interface Product {
@@ -30,6 +32,7 @@ interface Product {
     fullname: string;
     FarmName: string;
     FarmLocation: string;
+    phoneNumber?: string;
   };
   averageRating: number;
   reviewCount: number;
@@ -59,6 +62,18 @@ export default function ProductDetailPage() {
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
   const [addToCartSuccess, setAddToCartSuccess] = useState(false)
+  const [customerCanReview, setCustomerCanReview] = useState(false)
+  const [reviewModal, setReviewModal] = useState<{
+    isOpen: boolean;
+    productId: string;
+    orderId: string;
+    productName: string;
+  }>({
+    isOpen: false,
+    productId: "",
+    orderId: "",
+    productName: "",
+  })
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -82,8 +97,24 @@ export default function ProductDetailPage() {
       }
     }
 
+    const checkCanReview = async () => {
+      try {
+        const response = await fetch(`/api/reviews/check?productId=${params.id}`, {
+          credentials: "include"
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setCustomerCanReview(!data.hasReviewed)
+        }
+      } catch (error) {
+        console.error("Error checking review status:", error)
+      }
+    }
+
     if (params.id) {
       fetchProduct()
+      checkCanReview()
     }
   }, [params.id])
 
@@ -145,6 +176,42 @@ export default function ProductDetailPage() {
     setShowConfirmationPopup(true)
   }
 
+  const handleReviewClick = async () => {
+    try {
+      // Get the most recent delivered order for this product
+      const response = await fetch(`/api/orders/delivered?productId=${product!._id}`, {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.orders && data.orders.length > 0) {
+          // Use the most recent order
+          const mostRecentOrder = data.orders[0]
+          setReviewModal({
+            isOpen: true,
+            productId: product!._id,
+            orderId: mostRecentOrder.id,
+            productName: product!.name,
+          })
+        } else {
+          alert("No delivered orders found for this product")
+        }
+      } else {
+        alert("Failed to fetch order information")
+      }
+    } catch (error) {
+      console.error("Error fetching order:", error)
+      alert("Failed to fetch order information")
+    }
+  }
+
+  const handleReviewSubmitted = () => {
+    setCustomerCanReview(false)
+    // Refresh reviews
+    window.location.reload()
+  }
+
   const handleOrderConfirm = async (address: string) => {
     setShowConfirmationPopup(false)
     setIsNavigating(true)
@@ -168,6 +235,7 @@ export default function ProductDetailPage() {
 
       // Send order to API
       const response = await fetch("/api/orders", {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -344,7 +412,7 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="text-3xl font-bold text-blue-600 mb-2">
-                ${product.price}/{product.unit}
+                Rs {product.price}/{product.unit}
               </div>
 
               {product.quantity <= 0 ? (
@@ -445,7 +513,7 @@ export default function ProductDetailPage() {
                   ) : (
                     <>
                       <ShoppingCart className="w-4 h-4 mr-2" />
-                      Add to Cart - ${(product.price * quantity)}
+                      Add to Cart - Rs {(product.price * quantity)}
                     </>
                   )}
                 </Button>
@@ -501,6 +569,11 @@ export default function ProductDetailPage() {
                 <p className="text-gray-600 flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
                   {product.farmerId.FarmName}, {product.farmerId.FarmLocation}
+                  <span className="mx-2 text-gray-400">|</span>
+                  <span className="flex items-center gap-1">
+                    <span className="font-medium text-gray-700">Phone:</span>
+                    <span className="text-gray-700">{product.farmerId.phoneNumber}</span>
+                  </span>
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
                   Local farmer committed to providing fresh, quality produce
@@ -509,43 +582,14 @@ export default function ProductDetailPage() {
             </div>
           </CardContent>
         </Card>
-
+     <div className="bg-white">
         {/* Reviews */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-blue-800">Customer Reviews</CardTitle>
-            <CardDescription>
-              {product.averageRating} out of 5 stars ({product.reviewCount} reviews)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {reviews.length > 0 ? (
-                reviews.map((review) => (
-                  <div key={review._id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-800">{review.customerId.fullName}</span>
-                        <div className="flex">{renderStars(review.rating)}</div>
-                      </div>
-                      <span className="text-sm text-gray-500">{formatDate(review.createdAt)}</span>
-                    </div>
-                    <p className="text-gray-700 text-sm">{review.comment}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No reviews yet. Be the first to review this product!</p>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              className="w-full mt-4 border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
-            >
-              View All Reviews
-            </Button>
-          </CardContent>
-        </Card>
-
+        <ReviewsSection 
+          productId={product._id} 
+          customerCanReview={customerCanReview}
+          onReviewClick={handleReviewClick}
+        />
+</div>
         {/* Order Confirmation Popup */}
         <OrderConfirmationPopup
           isOpen={showConfirmationPopup}
@@ -553,6 +597,16 @@ export default function ProductDetailPage() {
           items={orderItems as any}
           total={total}
           onConfirm={handleOrderConfirm}
+        />
+
+        {/* Review Modal */}
+        <ReviewModal
+          isOpen={reviewModal.isOpen}
+          onClose={() => setReviewModal({ isOpen: false, productId: "", orderId: "", productName: "" })}
+          productId={reviewModal.productId}
+          orderId={reviewModal.orderId}
+          productName={reviewModal.productName}
+          onReviewSubmitted={handleReviewSubmitted}
         />
       </div>
     </CustomerLayout>

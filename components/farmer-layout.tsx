@@ -32,6 +32,8 @@ import { BarChart3, Plus, Lightbulb, User, Settings, LogOut, Sprout, Bell, Searc
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
+import { signOut, useSession } from "next-auth/react"
+import { useEffect } from "react"
 
 const menuItems = [
   {
@@ -74,10 +76,18 @@ function SidebarCloseButton() {
 export function FarmerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: session, status } = useSession()
 
-  const handleSignOut = () => {
-    localStorage.removeItem("farmer_auth")
-    router.push("/")
+  useEffect(() => {
+    if (status === "loading") return
+    
+    if (!session || session.user.role !== "farmer") {
+      router.push("/farmer/login")
+    }
+  }, [session, status, router])
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: "/" })
   }
 
   const handleProfileClick = () => {
@@ -185,7 +195,7 @@ export function FarmerLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex-1 flex items-center gap-4">
+          {/* <div className="flex-1 flex items-center gap-4">
             <div className="relative max-w-md flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-400 w-4 h-4" />
               <Input
@@ -193,10 +203,10 @@ export function FarmerLayout({ children }: { children: React.ReactNode }) {
                 className="pl-10 border-green-200 focus:border-green-400 focus:ring-green-400"
               />
             </div>
-          </div>
-          <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+          </div> */}
+          {/* <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
             <Bell className="w-5 h-5" />
-          </Button>
+          </Button> */}
         </header>
         <main className="flex-1 p-6 bg-gradient-to-br from-green-50/30 via-emerald-50/30 to-teal-50/30">
           {children}

@@ -16,17 +16,17 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
     const body = await req.json();
 
-    const {
-      productId,
-      orderId,
-      rating,
-      comment,
-      images,
-    } = body;
+    console.log("Received review request body:", body);
+    console.log("Body type:", typeof body);
+    console.log("productId from body:", body.productId);
+    console.log("productId type:", typeof body.productId);
 
+    const { productId, orderId, rating, comment } = body;
+
+    // Validate input
     if (!productId || !orderId || !rating || !comment) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Product ID, Order ID, rating, and comment are required" },
         { status: 400 }
       );
     }
@@ -38,36 +38,82 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify that the customer has purchased this product
-    const order = await Order.findOne({
-      _id: orderId,
-      customerId: session.user.id,
-      status: "delivered",
-    });
-
+    // Check if order exists and belongs to the customer
+    const order = await Order.findById(orderId);
     if (!order) {
       return NextResponse.json(
-        { error: "Order not found or not delivered" },
+        { error: "Order not found" },
         { status: 404 }
       );
     }
 
-    // Check if product is in the order
-    const orderItem = order.items.find(
-      (item: any) => item.productId.toString() === productId
-    );
+    console.log("Order found:", {
+      orderId: order._id,
+      customerId: order.customerId,
+      sessionUserId: session.user.id,
+      status: order.status,
+      items: order.items.map((item: any) => ({
+        productId: item.productId.toString(),
+        name: item.name
+      }))
+    });
 
-    if (!orderItem) {
+    if (order.customerId.toString() !== session.user.id) {
       return NextResponse.json(
-        { error: "Product not found in order" },
+        { error: "Order does not belong to you" },
+        { status: 403 }
+      );
+    }
+
+    // Check if order status is delivered
+    if (order.status !== "delivered") {
+      return NextResponse.json(
+        { error: "You can only review products from delivered orders" },
         { status: 400 }
       );
     }
 
-    // Check if review already exists
+    // Ensure we have the correct product ID (handle case where productId might be an object)
+    const actualProductId = typeof productId === 'object' && productId._id 
+      ? productId._id 
+      : productId;
+
+    // Check if product exists in the order
+    const productInOrder = order.items.find((item: any) => {
+      const itemProductId = item.productId.toString();
+      const requestedProductId = actualProductId.toString();
+      return itemProductId === requestedProductId;
+    });
+    
+    if (!productInOrder) {
+      console.log("Order items:", order.items.map((item: any) => ({
+        productId: item.productId.toString(),
+        name: item.name
+      })));
+      console.log("Requested productId:", productId);
+      console.log("Requested productId type:", typeof productId);
+      console.log("Actual productId:", actualProductId);
+      return NextResponse.json(
+        { 
+          error: "Product not found in this order",
+          debug: {
+            orderItems: order.items.map((item: any) => ({
+              productId: item.productId.toString(),
+              name: item.name
+            })),
+            requestedProductId: productId,
+            requestedProductIdType: typeof productId,
+            actualProductId: actualProductId
+          }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if customer has already reviewed this product
     const existingReview = await Review.findOne({
       customerId: session.user.id,
-      productId,
+      productId: actualProductId
     });
 
     if (existingReview) {
@@ -77,20 +123,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create review
+    // Create the review
     const review = await Review.create({
       customerId: session.user.id,
-      productId,
+      productId: actualProductId,
       farmerId: order.farmerId,
-      orderId,
-      rating,
-      comment,
-      images: images || [],
+      orderId: orderId,
+      rating: rating,
+      comment: comment,
+      images: [],
     });
 
     return NextResponse.json({
       message: "Review created successfully",
-      review,
+      review: {
+        id: review._id,
+        rating: review.rating,
+        comment: review.comment,
+        createdAt: review.createdAt,
+      }
     }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating review:", error);
@@ -104,7 +155,6 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
-
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId");
     const farmerId = searchParams.get("farmerId");
@@ -125,7 +175,7 @@ export async function GET(req: NextRequest) {
 
     const reviews = await Review.find(filter)
       .populate("customerId", "fullName")
-      .populate("productId", "name")
+      .populate("productId", "name images")
       .populate("farmerId", "fullname FarmName")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -134,8 +184,47 @@ export async function GET(req: NextRequest) {
 
     const total = await Review.countDocuments(filter);
 
+    // Calculate average rating
+    const avgRatingResult = await Review.aggregate([
+      { $match: filter },
+      { $group: { _id: null, avgRating: { $avg: "$rating" } } }
+    ]);
+
+    const averageRating = avgRatingResult.length > 0 ? avgRatingResult[0].avgRating : 0;
+
+    // Get rating distribution
+    const ratingDistribution = await Review.aggregate([
+      { $match: filter },
+      { $group: { _id: "$rating", count: { $sum: 1 } } },
+      { $sort: { _id: -1 } }
+    ]);
+
     return NextResponse.json({
-      reviews,
+      reviews: reviews.map(review => ({
+        id: review._id,
+        rating: review.rating,
+        comment: review.comment,
+        helpful: review.helpful,
+        createdAt: review.createdAt,
+        customer: {
+          name: review.customerId.fullName,
+        },
+        product: {
+          name: review.productId.name,
+        },
+        farmer: {
+          name: review.farmerId.fullname,
+          farmName: review.farmerId.FarmName,
+        },
+      })),
+      stats: {
+        averageRating: Math.round(averageRating * 10) / 10,
+        totalReviews: total,
+        ratingDistribution: ratingDistribution.reduce((acc, item) => {
+          acc[item._id] = item.count;
+          return acc;
+        }, {} as Record<number, number>),
+      },
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(total / limit),

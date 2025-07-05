@@ -126,6 +126,7 @@ export default function CartPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include session cookies
         body: JSON.stringify(orderData),
       })
 
@@ -159,7 +160,7 @@ export default function CartPage() {
   }
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const deliveryFee = subtotal > 50 ? 0 : 5.99 // Free delivery over $50
+          const deliveryFee = subtotal > 50 ? 0 : 5.99 // Free delivery over Rs 50
   const discount = 0
   const total = subtotal + deliveryFee - discount
 
@@ -230,7 +231,7 @@ export default function CartPage() {
                             {item.farmer}
                           </p>
                           <p className="text-lg font-bold text-blue-600 mt-1">
-                            ${item.price}/{item.unit}
+                            Rs {item.price}/{item.unit}
                           </p>
                         </div>
                         <div className="text-right">
@@ -279,7 +280,7 @@ export default function CartPage() {
                           </Button>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-blue-600">${(item.price * item.quantity)}</p>
+                          <p className="font-bold text-blue-600">Rs {(item.price * item.quantity)}</p>
                         </div>
                       </div>
                     </div>
@@ -309,7 +310,7 @@ export default function CartPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${subtotal}</span>
+                    <span className="font-medium">Rs {subtotal}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery Fee</span>
@@ -330,7 +331,7 @@ export default function CartPage() {
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span className="text-blue-600">${total}</span>
+                    <span className="text-blue-600">Rs {total}</span>
                   </div>
                 </div>
                 <Button

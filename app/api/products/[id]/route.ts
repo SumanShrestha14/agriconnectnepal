@@ -14,7 +14,7 @@ export async function GET(
     const { id } = await params;
 
     const product = await Product.findById(id)
-      .populate("farmerId", "fullname FarmName FarmLocation FarmDescription")
+      .populate("farmerId", "fullname FarmName FarmLocation FarmDescription phoneNumber")
       .lean();
 
     if (!product) {
