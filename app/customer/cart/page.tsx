@@ -1,68 +1,101 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CustomerLayout } from "@/components/customer-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { ShoppingCart, Minus, Plus, Trash2, MapPin, CreditCard, Truck } from "lucide-react"
+import { ShoppingCart, Minus, Plus, Trash2, MapPin, CreditCard, Truck, ArrowLeft } from "lucide-react"
 import { OrderConfirmationPopup } from "@/components/order-confirmation-popup"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import Link from "next/link"
 
-const cartItems = [
-  {
-    id: 1,
-    name: "Organic Tomatoes",
-    farmer: "Green Valley Farm",
-    location: "California",
-    price: 4.5,
-    unit: "kg",
-    quantity: 2,
-    image: "/placeholder.svg?height=80&width=80",
-    inStock: true,
-  },
-  {
-    id: 2,
-    name: "Fresh Strawberries",
-    farmer: "Berry Fields Farm",
-    location: "Oregon",
-    price: 8.99,
-    unit: "kg",
-    quantity: 1,
-    image: "/placeholder.svg?height=80&width=80",
-    inStock: true,
-  },
-  {
-    id: 3,
-    name: "Organic Carrots",
-    farmer: "Sunshine Acres",
-    location: "Texas",
-    price: 2.3,
-    unit: "kg",
-    quantity: 3,
-    image: "/placeholder.svg?height=80&width=80",
-    inStock: false,
-  },
-]
+interface CartItem {
+  id: string
+  name: string
+  farmer: string
+  farmerId: string
+  price: number
+  unit: string
+  quantity: number
+  image: string
+  inStock: boolean
+}
 
 export default function CartPage() {
-  const [items, setItems] = useState(cartItems)
+  const [items, setItems] = useState<CartItem[]>([])
   const [promoCode, setPromoCode] = useState("")
   const [showConfirmationPopup, setShowConfirmationPopup] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const updateQuantity = (id: number, newQuantity: number) => {
+  // Load cart items from localStorage on component mount
+  useEffect(() => {
+    const loadCartItems = () => {
+      try {
+        const cartData = localStorage.getItem("customer_cart")
+        if (cartData) {
+          const cartItems = JSON.parse(cartData)
+          // Add inStock property to each item (you can enhance this with API call)
+          const itemsWithStock = cartItems.map((item: any) => ({
+            ...item,
+            inStock: true // You can make an API call to check actual stock
+          }))
+          setItems(itemsWithStock)
+        }
+      } catch (error) {
+        console.error("Error loading cart items:", error)
+        setItems([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadCartItems()
+
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      loadCartItems()
+    }
+
+    window.addEventListener('cartUpdated', handleCartUpdate)
+    window.addEventListener('storage', handleCartUpdate)
+
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate)
+      window.removeEventListener('storage', handleCartUpdate)
+    }
+  }, [])
+
+  const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item)))
+    
+    const updatedItems = items.map((item) => 
+      item.id === id ? { ...item, quantity: newQuantity } : item
+    )
+    setItems(updatedItems)
+    
+    // Update localStorage
+    localStorage.setItem("customer_cart", JSON.stringify(updatedItems))
+    window.dispatchEvent(new Event('cartUpdated'))
   }
 
-  const removeItem = (id: number) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
+  const removeItem = (id: string) => {
+    const updatedItems = items.filter((item) => item.id !== id)
+    setItems(updatedItems)
+    
+    // Update localStorage
+    localStorage.setItem("customer_cart", JSON.stringify(updatedItems))
+    window.dispatchEvent(new Event('cartUpdated'))
   }
 
   const handleCheckout = () => {
+    if (items.length === 0) {
+      alert("Your cart is empty!")
+      return
+    }
     setShowConfirmationPopup(true)
   }
 
@@ -70,12 +103,53 @@ export default function CartPage() {
     setShowConfirmationPopup(false)
     setIsNavigating(true)
 
-    // Simulate navigation delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Prepare order data for API
+      const orderData = {
+        items: items.map(item => ({
+          productId: item.id,
+          name: item.name,
+          farmerId: item.farmerId,
+          price: item.price,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+        totalAmount: subtotal + deliveryFee - discount,
+        deliveryAddress: address,
+        deliveryInstructions: "",
+        paymentMethod: "credit_card",
+      }
 
-    // Clear cart after successful order
-    setItems([])
-    setIsNavigating(false)
+      // Send order to API
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to create order")
+      }
+
+      // Clear cart after successful order
+      localStorage.removeItem("customer_cart")
+      setItems([])
+      window.dispatchEvent(new Event('cartUpdated'))
+
+      // Show success message
+      alert("Order placed successfully! You will receive a confirmation email shortly.")
+      
+      // Navigate to orders page
+      window.location.href = "/customer/profile"
+    } catch (error: any) {
+      console.error("Error creating order:", error)
+      alert("Failed to place order: " + error.message)
+    } finally {
+      setIsNavigating(false)
+    }
   }
 
   const handleContinueShopping = async () => {
@@ -85,7 +159,7 @@ export default function CartPage() {
   }
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const deliveryFee = 5.99
+  const deliveryFee = subtotal > 50 ? 0 : 5.99 // Free delivery over $50
   const discount = 0
   const total = subtotal + deliveryFee - discount
 
@@ -99,11 +173,21 @@ export default function CartPage() {
     unit: item.unit,
   }))
 
+  if (loading) {
+    return (
+      <CustomerLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading cart..." />
+        </div>
+      </CustomerLayout>
+    )
+  }
+
   if (isNavigating) {
     return (
       <CustomerLayout>
         <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" text="Loading..." />
+          <LoadingSpinner size="lg" text="Processing..." />
         </div>
       </CustomerLayout>
     )
@@ -143,10 +227,10 @@ export default function CartPage() {
                           <h3 className="font-medium text-blue-800">{item.name}</h3>
                           <p className="text-sm text-gray-600 flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {item.farmer}, {item.location}
+                            {item.farmer}
                           </p>
                           <p className="text-lg font-bold text-blue-600 mt-1">
-                            ${item.price.toFixed(2)}/{item.unit}
+                            ${item.price}/{item.unit}
                           </p>
                         </div>
                         <div className="text-right">
@@ -195,7 +279,7 @@ export default function CartPage() {
                           </Button>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-blue-600">${(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-bold text-blue-600">${(item.price * item.quantity)}</p>
                         </div>
                       </div>
                     </div>
@@ -214,28 +298,7 @@ export default function CartPage() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Promo Code */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-blue-800">Promo Code</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter promo code"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-1 focus:outline-none"
-                  />
-                  <Button variant="outline" className="border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent">
-                    Apply
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
-
           {/* Order Summary */}
           <div className="space-y-4">
             <Card>
@@ -246,25 +309,30 @@ export default function CartPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    <span className="font-medium">${subtotal}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery Fee</span>
-                    <span className="font-medium">${deliveryFee.toFixed(2)}</span>
+                    <span className="font-medium">
+                      {deliveryFee === 0 ? (
+                        <span className="text-green-600">Free</span>
+                      ) : (
+                        `$${deliveryFee}`
+                      )}
+                    </span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount</span>
-                      <span>-${discount.toFixed(2)}</span>
+                      <span>-${discount}</span>
                     </div>
                   )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span className="text-blue-600">${total.toFixed(2)}</span>
+                    <span className="text-blue-600">${total}</span>
                   </div>
                 </div>
-
                 <Button
                   className="w-full bg-blue-600 hover:bg-blue-700"
                   disabled={inStockItems.length === 0}
@@ -273,26 +341,6 @@ export default function CartPage() {
                   <CreditCard className="w-4 h-4 mr-2" />
                   Proceed to Checkout
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* Delivery Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <Truck className="w-5 h-5" />
-                  Delivery Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm">
-                  <p className="font-medium text-gray-800">Estimated Delivery</p>
-                  <p className="text-gray-600">2-3 business days</p>
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium text-gray-800">Delivery Address</p>
-                  <p className="text-gray-600">Will be confirmed at checkout</p>
-                </div>
               </CardContent>
             </Card>
           </div>

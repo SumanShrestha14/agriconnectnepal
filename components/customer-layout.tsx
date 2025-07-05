@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useState, useEffect } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -34,25 +35,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 
-const menuItems = [
-  {
-    title: "Available Products",
-    url: "/customer/products",
-    icon: Package,
-  },
-  {
-    title: "My Cart",
-    url: "/customer/cart",
-    icon: ShoppingCart,
-    badge: "3",
-  },
-  {
-    title: "Favorites",
-    url: "/customer/favorites",
-    icon: Heart,
-  },
-]
-
 function SidebarCloseButton() {
   const { setOpen } = useSidebar()
 
@@ -66,6 +48,33 @@ function SidebarCloseButton() {
       <X className="w-4 h-4" />
     </Button>
   )
+}
+
+function CartBadge() {
+  const [cartCount, setCartCount] = useState(0)
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      const cartItems = JSON.parse(localStorage.getItem("customer_cart") || "[]")
+      setCartCount(cartItems.length)
+    }
+
+    // Initial load
+    updateCartCount()
+
+    // Listen for storage changes
+    window.addEventListener('storage', updateCartCount)
+    
+    // Custom event for cart updates within the same tab
+    window.addEventListener('cartUpdated', updateCartCount)
+
+    return () => {
+      window.removeEventListener('storage', updateCartCount)
+      window.removeEventListener('cartUpdated', updateCartCount)
+    }
+  }, [])
+
+  return cartCount > 0 ? cartCount.toString() : undefined
 }
 
 export function CustomerLayout({ children }: { children: React.ReactNode }) {
@@ -84,6 +93,25 @@ export function CustomerLayout({ children }: { children: React.ReactNode }) {
   const handleSettingsClick = () => {
     router.push("/customer/settings")
   }
+
+  const menuItems = [
+    {
+      title: "Available Products",
+      url: "/customer/products",
+      icon: Package,
+    },
+    {
+      title: "My Cart",
+      url: "/customer/cart",
+      icon: ShoppingCart,
+      badge: <CartBadge />,
+    },
+    {
+      title: "Favorites",
+      url: "/customer/favorites",
+      icon: Heart,
+    },
+  ]
 
   return (
     <SidebarProvider>

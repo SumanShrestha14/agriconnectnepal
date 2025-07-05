@@ -16,20 +16,35 @@ const LoginPage = () => {
     setLoading(true);
     setError('');
 
-    const res = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
 
-    console.log(res)
+      console.log(res);
 
-    setLoading(false);
-
-    if (res?.error) {
-      setError('Invalid email or password');
-    } else {
-      router.push('/');
+      if (res?.error) {
+        setError('Invalid email or password');
+      } else {
+        // Get user role from session to redirect appropriately
+        const session = await fetch('/api/auth/session');
+        const sessionData = await session.json();
+        
+        if (sessionData?.user?.role === 'farmer') {
+          router.push('/farmer/dashboard');
+        } else if (sessionData?.user?.role === 'customer') {
+          router.push('/customer/products');
+        } else {
+          router.push('/');
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

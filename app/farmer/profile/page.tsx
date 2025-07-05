@@ -315,7 +315,7 @@ export default function FarmerProfilePage() {
                             >
                               {order.status}
                             </Badge>
-                            <p className="text-lg font-bold text-green-600 mt-1">${order.total.toFixed(2)}</p>
+                            <p className="text-lg font-bold text-green-600 mt-1">${order.total}</p>
                           </div>
                         </div>
 
@@ -329,7 +329,7 @@ export default function FarmerProfilePage() {
                               <span>
                                 {item.name} ({item.quantity} {item.unit})
                               </span>
-                              <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                              <span className="font-medium">${(item.price * item.quantity)}</span>
                             </div>
                           ))}
                         </div>

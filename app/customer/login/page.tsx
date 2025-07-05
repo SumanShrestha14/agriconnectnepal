@@ -45,7 +45,17 @@ export default function CustomerLogin() {
           setError(`⚠️ ${res.error}`);
         }
       } else {
-        router.push("/customer/products");
+        // Verify user role and redirect accordingly
+        const session = await fetch('/api/auth/session');
+        const sessionData = await session.json();
+        
+        if (sessionData?.user?.role === 'customer') {
+          router.push("/customer/products");
+        } else if (sessionData?.user?.role === 'farmer') {
+          setError("❌ This is a customer login. Please use farmer login.");
+        } else {
+          router.push("/customer/products");
+        }
       }
     } catch (err) {
       setError("❌ Something went wrong. Please try again later.");

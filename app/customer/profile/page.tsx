@@ -10,26 +10,66 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CustomerLayout } from "@/components/customer-layout"
-import { Edit, Save, X, MapPin, Phone, Mail, ShoppingBag, Heart, Clock, Star, Eye, MessageSquare } from "lucide-react"
+import { Edit, Save, X, MapPin, Phone, Mail, ShoppingBag, Heart, Clock, Star, Eye, MessageSquare, Truck, CheckCircle, AlertCircle, Package } from "lucide-react"
+import { LoadingSpinner } from "@/components/loading-spinner"
+
+interface Order {
+  _id: string;
+  items: Array<{
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    unit: string;
+  }>;
+  totalAmount: number;
+  status: string;
+  deliveryAddress: string;
+  estimatedDelivery: string;
+  createdAt: string;
+  farmerId: {
+    fullname: string;
+    FarmName: string;
+  };
+}
 
 export default function CustomerProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
-  const [orders, setOrders] = useState([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [profileData, setProfileData] = useState({
     name: "Sarah Johnson",
     email: "sarah.johnson@example.com",
     phone: "+1 (555) 987-6543",
     address: "123 Main Street, San Francisco, CA 94102",
     bio: "Food enthusiast who loves supporting local farmers and sustainable agriculture. Always looking for the freshest, highest quality produce for my family.",
-    preferences: ["Organic", "Local", "Seasonal", "Pesticide-Free"],
     dietaryRestrictions: ["Vegetarian"],
   })
 
   useEffect(() => {
-    // Load orders from localStorage
-    const savedOrders = JSON.parse(localStorage.getItem("customer_orders") || "[]")
-    setOrders(savedOrders)
+    fetchOrders()
   }, [])
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      
+      const response = await fetch("/api/orders")
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders")
+      }
+      
+      const data = await response.json()
+      setOrders(data.orders || [])
+    } catch (err: any) {
+      setError(err.message || "Failed to load orders")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSave = () => {
     setIsEditing(false)
@@ -44,6 +84,45 @@ export default function CustomerProfilePage() {
   const handleReviewProduct = (orderId: string, productName: string) => {
     alert(`Review feature for ${productName} from order ${orderId} - This would open a review modal`)
   }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
+      confirmed: { color: "bg-blue-100 text-blue-800", icon: Package },
+      processing: { color: "bg-purple-100 text-purple-800", icon: Package },
+      shipped: { color: "bg-orange-100 text-orange-800", icon: Truck },
+      delivered: { color: "bg-green-100 text-green-800", icon: CheckCircle },
+      cancelled: { color: "bg-red-100 text-red-800", icon: AlertCircle },
+    }
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    const Icon = config.icon
+
+    return (
+      <Badge className={config.color}>
+        <Icon className="w-3 h-3 mr-1" />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    )
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  const getOrderStats = () => {
+    const totalOrders = orders.length
+    const deliveredOrders = orders.filter(order => order.status === 'delivered').length
+    const pendingOrders = orders.filter(order => ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)).length
+    
+    return { totalOrders, deliveredOrders, pendingOrders }
+  }
+
+  const stats = getOrderStats()
 
   return (
     <CustomerLayout>
@@ -75,7 +154,6 @@ export default function CustomerProfilePage() {
         <Tabs defaultValue="personal" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
             <TabsTrigger value="orders">Order History</TabsTrigger>
             <TabsTrigger value="view-orders">View Orders</TabsTrigger>
             <TabsTrigger value="favorites">Favorites</TabsTrigger>
@@ -179,38 +257,6 @@ export default function CustomerProfilePage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="preferences" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Shopping Preferences</CardTitle>
-                <CardDescription>Your food preferences and dietary restrictions</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Food Preferences</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {profileData.preferences.map((preference, index) => (
-                      <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
-                        {preference}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Dietary Restrictions</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {profileData.dietaryRestrictions.map((restriction, index) => (
-                      <Badge key={index} className="bg-blue-600 text-white">
-                        {restriction}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="orders" className="space-y-6">
             <Card>
               <CardHeader>
@@ -218,49 +264,64 @@ export default function CustomerProfilePage() {
                 <CardDescription>Your recent purchases and order status</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <ShoppingBag className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                    <p className="text-2xl font-bold text-blue-800">{orders.length}</p>
-                    <p className="text-sm text-blue-600">Total Orders</p>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <LoadingSpinner size="lg" text="Loading orders..." />
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <Star className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                    <p className="text-2xl font-bold text-green-800">4.9</p>
-                    <p className="text-sm text-green-600">Average Rating</p>
+                ) : error ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                    <p className="text-red-600">{error}</p>
+                    <Button onClick={fetchOrders} className="mt-4">Retry</Button>
                   </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <Clock className="w-8 h-8 mx-auto mb-2 text-purple-600" />
-                    <p className="text-2xl font-bold text-purple-800">2</p>
-                    <p className="text-sm text-purple-600">Pending Orders</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-medium">Order #1234</h4>
-                        <p className="text-sm text-muted-foreground">Green Valley Farm</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <ShoppingBag className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                        <p className="text-2xl font-bold text-blue-800">{stats.totalOrders}</p>
+                        <p className="text-sm text-blue-600">Total Orders</p>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Delivered</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Organic tomatoes, lettuce, carrots</p>
-                    <p className="text-sm font-medium mt-2">$24.50</p>
-                  </div>
-
-                  <div className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-medium">Order #1233</h4>
-                        <p className="text-sm text-muted-foreground">Sunny Acres Farm</p>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                        <p className="text-2xl font-bold text-green-800">{stats.deliveredOrders}</p>
+                        <p className="text-sm text-green-600">Delivered</p>
                       </div>
-                      <Badge className="bg-blue-100 text-blue-800">In Transit</Badge>
+                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <Clock className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                        <p className="text-2xl font-bold text-purple-800">{stats.pendingOrders}</p>
+                        <p className="text-sm text-purple-600">Pending</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">Fresh herbs, spinach, bell peppers</p>
-                    <p className="text-sm font-medium mt-2">$18.75</p>
-                  </div>
-                </div>
+
+                    <div className="space-y-4">
+                      {orders.slice(0, 5).map((order) => (
+                        <div key={order._id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-medium">Order #{order._id.slice(-6)}</h4>
+                              <p className="text-sm text-muted-foreground">{order.farmerId?.fullname || 'Unknown Farmer'}</p>
+                            </div>
+                            {getStatusBadge(order.status)}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {order.items.map(item => `${item.name} (${item.quantity} ${item.unit})`).join(', ')}
+                          </p>
+                          <p className="text-sm font-medium mt-2">${order.totalAmount}</p>
+                          <p className="text-xs text-gray-500 mt-1">Ordered on {formatDate(order.createdAt)}</p>
+                        </div>
+                      ))}
+                      
+                      {orders.length === 0 && (
+                        <div className="text-center py-8">
+                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                          <p className="text-gray-500">No orders yet</p>
+                          <p className="text-sm text-gray-400 mt-1">Start shopping to see your order history here</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -275,7 +336,17 @@ export default function CustomerProfilePage() {
                 <CardDescription>View detailed information about your orders</CardDescription>
               </CardHeader>
               <CardContent>
-                {orders.length === 0 ? (
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <LoadingSpinner size="lg" text="Loading orders..." />
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                    <p className="text-red-600">{error}</p>
+                    <Button onClick={fetchOrders} className="mt-4">Retry</Button>
+                  </div>
+                ) : orders.length === 0 ? (
                   <div className="text-center py-8">
                     <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p className="text-gray-500">No orders yet</p>
@@ -284,15 +355,16 @@ export default function CustomerProfilePage() {
                 ) : (
                   <div className="space-y-4">
                     {orders.map((order) => (
-                      <div key={order.id} className="border rounded-lg p-4">
+                      <div key={order._id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div>
-                            <h4 className="font-medium text-blue-800">Order {order.id}</h4>
-                            <p className="text-sm text-gray-600">{new Date(order.date).toLocaleDateString()}</p>
+                            <h4 className="font-medium text-blue-800">Order #{order._id.slice(-6)}</h4>
+                            <p className="text-sm text-gray-600">{formatDate(order.createdAt)}</p>
+                            <p className="text-sm text-gray-600">{order.farmerId?.fullname || 'Unknown Farmer'}</p>
                           </div>
                           <div className="text-right">
-                            <Badge className="bg-green-100 text-green-800 mb-1">{order.status}</Badge>
-                            <p className="text-lg font-bold text-blue-600">${order.total.toFixed(2)}</p>
+                            {getStatusBadge(order.status)}
+                            <p className="text-lg font-bold text-blue-600 mt-1">${order.totalAmount}</p>
                           </div>
                         </div>
 
@@ -307,11 +379,11 @@ export default function CustomerProfilePage() {
                                 {item.name} ({item.quantity} {item.unit})
                               </span>
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                                <span className="font-medium">${(item.price * item.quantity)}</span>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleReviewProduct(order.id, item.name)}
+                                  onClick={() => handleReviewProduct(order._id, item.name)}
                                   className="text-xs"
                                 >
                                   <MessageSquare className="w-3 h-3 mr-1" />
@@ -322,9 +394,12 @@ export default function CustomerProfilePage() {
                           ))}
                         </div>
 
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 space-y-1">
                           <p>
                             <strong>Delivery Address:</strong> {order.deliveryAddress}
+                          </p>
+                          <p>
+                            <strong>Estimated Delivery:</strong> {formatDate(order.estimatedDelivery)}
                           </p>
                         </div>
                       </div>
