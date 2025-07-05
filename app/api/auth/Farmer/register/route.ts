@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     await connectToDatabase();
-    
+
     const existingFarmer = await Farmer.findOne({ email });
     if (existingFarmer) {
       return NextResponse.json(

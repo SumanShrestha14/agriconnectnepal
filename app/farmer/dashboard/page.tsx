@@ -8,7 +8,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, DollarSign, Package, Users, Calendar, Star } from "lucide-react"
 import Image from "next/image"
 import { FarmerLayout } from "@/components/farmer-layout"
-
 const salesData = [
   { month: "Jan", sales: 4000, orders: 24 },
   { month: "Feb", sales: 3000, orders: 18 },

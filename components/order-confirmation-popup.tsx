@@ -1,16 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { CheckCircle, MapPin, Edit, Package, Truck } from "lucide-react"
+import { CheckCircle, MapPin, Edit, Package, Truck, AlertCircle } from "lucide-react"
 import { LoadingSpinner } from "./loading-spinner"
 
 interface OrderItem {
-  id: number
+  id: string
   name: string
   farmer: string
   price: number
@@ -32,48 +32,52 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
   const [orderId, setOrderId] = useState("")
   const [deliveryAddress, setDeliveryAddress] = useState("")
   const [isEditingAddress, setIsEditingAddress] = useState(false)
+  const [error, setError] = useState("")
 
   // Load address from localStorage on component mount
-  useState(() => {
+  useEffect(() => {
     const customerProfile = localStorage.getItem("customer_profile")
     if (customerProfile) {
-      const profile = JSON.parse(customerProfile)
-      const fullAddress = `${profile.address}, ${profile.city}, ${profile.state} ${profile.zipCode}`
-      setDeliveryAddress(fullAddress)
+      try {
+        const profile = JSON.parse(customerProfile)
+        const fullAddress = `${profile.address || ""}, ${profile.city || ""}, ${profile.state || ""} ${profile.zipCode || ""}`
+        setDeliveryAddress(fullAddress.trim())
+      } catch (error) {
+        console.error("Error parsing customer profile:", error)
+      }
     }
-  })
+  }, [])
 
   const handleConfirmOrder = async () => {
-    setIsProcessing(true)
-
-    // Simulate processing time
-    await new Promise((resolve) => setTimeout(resolve, 2500))
-
-    const newOrderId = `ORD-${Date.now()}`
-    setOrderId(newOrderId)
-
-    // Save order to localStorage
-    const existingOrders = JSON.parse(localStorage.getItem("customer_orders") || "[]")
-    const newOrder = {
-      id: newOrderId,
-      items: items,
-      total: total,
-      date: new Date().toISOString(),
-      status: "confirmed",
-      deliveryAddress: deliveryAddress,
+    if (!deliveryAddress.trim()) {
+      setError("Please provide a delivery address")
+      return
     }
-    existingOrders.push(newOrder)
-    localStorage.setItem("customer_orders", JSON.stringify(existingOrders))
 
-    setIsProcessing(false)
-    setIsConfirmed(true)
-    onConfirm(deliveryAddress)
+    setIsProcessing(true)
+    setError("")
+
+    try {
+      // Call the onConfirm function which handles the API call
+      await onConfirm(deliveryAddress)
+      
+      // Generate a temporary order ID for display
+      const newOrderId = `ORD-${Date.now()}`
+      setOrderId(newOrderId)
+      
+      setIsProcessing(false)
+      setIsConfirmed(true)
+    } catch (error: any) {
+      setIsProcessing(false)
+      setError(error.message || "Failed to place order. Please try again.")
+    }
   }
 
   const handleClose = () => {
     setIsProcessing(false)
     setIsConfirmed(false)
     setOrderId("")
+    setError("")
     onClose()
   }
 
@@ -110,7 +114,7 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
                   <strong>Order ID:</strong> {orderId}
                 </p>
                 <p className="text-green-700">
-                  <strong>Total:</strong> ${total.toFixed(2)}
+                  <strong>Total:</strong> ${total}
                 </p>
                 <p className="text-green-700">
                   <strong>Items:</strong> {items.length} product{items.length > 1 ? "s" : ""}
@@ -146,6 +150,14 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+
           {/* Order Items */}
           <div>
             <h3 className="font-semibold text-gray-800 mb-3">Order Summary</h3>
@@ -156,17 +168,17 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
                     <p className="font-medium text-gray-800">{item.name}</p>
                     <p className="text-sm text-gray-600">{item.farmer}</p>
                     <p className="text-sm text-blue-600">
-                      {item.quantity} {item.unit} × ${item.price.toFixed(2)}
+                      {item.quantity} {item.unit} × ${item.price}
                     </p>
                   </div>
-                  <p className="font-bold text-blue-600">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="font-bold text-blue-600">${(item.price * item.quantity)}</p>
                 </div>
               ))}
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between items-center text-lg font-bold">
               <span>Total Amount:</span>
-              <span className="text-blue-600">${total.toFixed(2)}</span>
+              <span className="text-blue-600">${total}</span>
             </div>
           </div>
 
@@ -222,20 +234,6 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
             )}
           </div>
 
-          {/* Delivery Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Truck className="w-5 h-5 text-blue-600" />
-              <span className="font-medium text-gray-800">Delivery Information</span>
-            </div>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>• Estimated delivery: 2-3 business days</p>
-              <p>• Free delivery on orders over $50</p>
-              <p>• Fresh guarantee or money back</p>
-              <p>• Contact support for any delivery issues</p>
-            </div>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={handleClose} className="flex-1 bg-transparent">
@@ -246,7 +244,7 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
               disabled={!deliveryAddress.trim()}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
-              Confirm Order - ${total.toFixed(2)}
+              Confirm Order - ${total}
             </Button>
           </div>
         </div>

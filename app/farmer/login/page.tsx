@@ -49,7 +49,17 @@ export default function FarmerLogin() {
           setError(`⚠️ ${res.error}`);
         }
       } else {
-        router.push("/farmer/dashboard");
+        // Verify user role and redirect accordingly
+        const session = await fetch('/api/auth/session');
+        const sessionData = await session.json();
+        
+        if (sessionData?.user?.role === 'farmer') {
+          router.push("/farmer/dashboard");
+        } else if (sessionData?.user?.role === 'customer') {
+          setError("❌ This is a farmer login. Please use customer login.");
+        } else {
+          router.push("/farmer/dashboard");
+        }
       }
     } catch (err: any) {
       console.error("Login error:", err);

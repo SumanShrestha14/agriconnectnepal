@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { BarChart3, Plus, Lightbulb, User, Settings, LogOut, Sprout, Bell, Search, X } from "lucide-react"
+import { BarChart3, Plus, Lightbulb, User, Settings, LogOut, Sprout, Bell, Search, X, Package } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -38,6 +38,11 @@ const menuItems = [
     title: "Dashboard",
     url: "/farmer/dashboard",
     icon: BarChart3,
+  },
+  {
+    title: "Orders",
+    url: "/farmer/orders",
+    icon: Package,
   },
   {
     title: "Add Products",

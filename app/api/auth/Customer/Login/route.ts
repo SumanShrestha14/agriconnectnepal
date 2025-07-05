@@ -1,5 +1,5 @@
 import { connectToDatabase } from "@/lib/db";
-import Farmer from "@/models/Farmer";
+import Customer from "@/models/Customer";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Find farmer by email
-    const farmer = await Farmer.findOne({ email });
-    if (!farmer) {
+    // Find customer by email
+    const customer = await Customer.findOne({ email });
+    if (!customer) {
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, farmer.password);
+    const isValidPassword = await bcrypt.compare(password, customer.password);
     if (!isValidPassword) {
       return NextResponse.json(
         { error: "Invalid email or password" },
@@ -34,21 +34,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Return farmer data (without password)
+    // Return customer data (without password)
     return NextResponse.json({
       message: "Login successful",
       user: {
-        id: farmer._id,
-        email: farmer.email,
-        fullname: farmer.fullname,
-        phoneNumber: farmer.phoneNumber,
-        FarmName: farmer.FarmName,
-        FarmLocation: farmer.FarmLocation,
-        role: "farmer",
+        id: customer._id,
+        email: customer.email,
+        fullName: customer.fullName,
+        phoneNumber: customer.phoneNumber,
+        role: "customer",
       },
     });
   } catch (error: any) {
-    console.error("Error in farmer login:", error);
+    console.error("Error in customer login:", error);
     return NextResponse.json(
       { error: "Login failed" },
       { status: 500 }

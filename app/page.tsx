@@ -175,11 +175,11 @@ export default function HomePage() {
                 Farmer&nbsp;Login
               </Button>
             </Link>
-            {/* <Link href="/customer/login">
+            <Link href="/customer/login">
               <Button className="bg-gradient-to-r from-green-600 to-emerald-600 shadow-lg hover:from-green-700 hover:to-emerald-700">
                 Get&nbsp;Started
               </Button>
-            </Link> */}
+            </Link>
           </div>
         </div>
       </header>
@@ -220,16 +220,17 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
-              <Link href="/customer/signup">
-                <Button
-                  size="lg"
-                  className="flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 px-10 py-6 text-lg font-semibold text-white shadow-2xl transition-all duration-300 hover:from-green-700 hover:to-emerald-700 hover:scale-105 hover:shadow-green-500/25"
-                >
+              <Button
+                asChild
+                size="lg"
+                className="flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 px-10 py-6 text-lg font-semibold text-white shadow-2xl transition-all duration-300 hover:from-green-700 hover:to-emerald-700 hover:scale-105 hover:shadow-green-500/25"
+              >
+                <Link href="/customer/signup">
                   <Users className="h-6 w-6" />
                   Start&nbsp;Shopping
                   <ArrowRight className="h-6 w-6" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
 
               <Link href="/farmer/signup">
                 <Button

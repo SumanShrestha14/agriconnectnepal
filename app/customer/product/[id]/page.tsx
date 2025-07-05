@@ -1,120 +1,143 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { CustomerLayout } from "@/components/customer-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { Heart, ShoppingCart, Star, MapPin, Truck, Shield, Leaf, Calendar, Plus, Minus } from "lucide-react"
+import { Heart, ShoppingCart, Star, MapPin, Truck, Shield, Leaf, Calendar, Plus, Minus, ArrowLeft, Clock, Package, AlertCircle, CheckCircle } from "lucide-react"
 import { OrderConfirmationPopup } from "@/components/order-confirmation-popup"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import Link from "next/link"
 
-// Mock product data - in real app this would come from API based on params.id
-const product = {
-  id: 1,
-  name: "Organic Tomatoes",
-  farmer: "Green Valley Farm",
-  farmerImage: "/placeholder.svg?height=40&width=40",
-  location: "California",
-  price: 4.5,
-  unit: "kg",
-  rating: 4.8,
-  reviews: 124,
-  images: [
-    "/placeholder.svg?height=400&width=400",
-    "/placeholder.svg?height=400&width=400",
-    "/placeholder.svg?height=400&width=400",
-  ],
-  category: "Vegetables",
-  inStock: true,
-  stockQuantity: 45,
-  description:
-    "Fresh, juicy organic tomatoes grown without pesticides in the heart of California's Central Valley. These vine-ripened tomatoes are perfect for salads, cooking, or eating fresh. Grown using sustainable farming practices with rich, organic soil.",
-  features: [
-    "100% Organic Certified",
-    "Vine-ripened for maximum flavor",
-    "No pesticides or chemicals",
-    "Harvested within 24 hours",
-    "Rich in vitamins and antioxidants",
-  ],
-  harvestDate: "2024-01-20",
-  bestBefore: "2024-01-27",
-  tags: ["organic", "local", "fresh", "vine-ripened"],
+interface Product {
+  _id: string;
+  name: string;
+  category: string;
+  price: number;
+  unit: string;
+  quantity: number;
+  description: string;
+  images: string[];
+  organic: boolean;
+  harvestDate?: string;
+  expiryDate?: string;
+  farmerId: {
+    _id: string;
+    fullname: string;
+    FarmName: string;
+    FarmLocation: string;
+  };
+  averageRating: number;
+  reviewCount: number;
 }
 
-const reviews = [
-  {
-    id: 1,
-    user: "Sarah M.",
-    rating: 5,
-    date: "2024-01-18",
-    comment:
-      "Amazing tomatoes! So fresh and flavorful. You can really taste the difference compared to store-bought ones.",
-  },
-  {
-    id: 2,
-    user: "Mike R.",
-    rating: 5,
-    date: "2024-01-15",
-    comment: "Best tomatoes I've had in years. Perfect for my homemade pasta sauce. Will definitely order again!",
-  },
-  {
-    id: 3,
-    user: "Emma L.",
-    rating: 4,
-    date: "2024-01-12",
-    comment: "Great quality and fast delivery. The tomatoes were perfectly ripe and lasted well in the fridge.",
-  },
-]
+interface Review {
+  _id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  customerId: {
+    fullName: string;
+  };
+}
 
 export default function ProductDetailPage() {
+  const params = useParams()
+
+  const [product, setProduct] = useState<Product | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [isFavorite, setIsFavorite] = useState(false)
   const [showConfirmationPopup, setShowConfirmationPopup] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [addToCartSuccess, setAddToCartSuccess] = useState(false)
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        setLoading(true)
+        setError("")
+        
+        const response = await fetch(`/api/products/${params.id}`)
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch product")
+        }
+        
+        const data = await response.json()
+        setProduct(data.product)
+        setReviews(data.reviews)
+      } catch (err: any) {
+        setError(err.message || "Failed to load product")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchProduct()
+    }
+  }, [params.id])
 
   const updateQuantity = (newQuantity: number) => {
-    if (newQuantity >= 1 && newQuantity <= product.stockQuantity) {
+    if (product && newQuantity >= 1 && newQuantity <= product.quantity) {
       setQuantity(newQuantity)
     }
   }
 
   const handleAddToCart = async () => {
+    if (!product) return
+    
     setIsAddingToCart(true)
+    setAddToCartSuccess(false)
 
-    // Simulate adding to cart
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const cartItems = JSON.parse(localStorage.getItem("customer_cart") || "[]")
+      const existingItem = cartItems.find((item: any) => item.id === product._id)
 
-    // Add to cart logic here
-    const cartItems = JSON.parse(localStorage.getItem("customer_cart") || "[]")
-    const existingItem = cartItems.find((item: any) => item.id === product.id)
+      if (existingItem) {
+        existingItem.quantity += quantity
+      } else {
+        cartItems.push({
+          id: product._id,
+          name: product.name,
+          farmer: product.farmerId.fullname,
+          farmerId: product.farmerId._id,
+          price: product.price,
+          quantity: quantity,
+          unit: product.unit,
+          image: product.images[0] || "/placeholder.svg",
+        })
+      }
 
-    if (existingItem) {
-      existingItem.quantity += quantity
-    } else {
-      cartItems.push({
-        id: product.id,
-        name: product.name,
-        farmer: product.farmer,
-        price: product.price,
-        quantity: quantity,
-        unit: product.unit,
-      })
+      localStorage.setItem("customer_cart", JSON.stringify(cartItems))
+      window.dispatchEvent(new Event('cartUpdated'))
+      
+      setAddToCartSuccess(true)
+      setTimeout(() => setAddToCartSuccess(false), 3000)
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      alert("Failed to add product to cart")
+    } finally {
+      setIsAddingToCart(false)
     }
-
-    localStorage.setItem("customer_cart", JSON.stringify(cartItems))
-    setIsAddingToCart(false)
   }
 
   const handleBuyNow = () => {
+    if (!product) return
+    
     const orderItem = {
-      id: product.id,
+      id: product._id,
       name: product.name,
-      farmer: product.farmer,
+      farmer: product.farmerId.fullname,
       price: product.price,
       quantity: quantity,
       unit: product.unit,
@@ -126,9 +149,48 @@ export default function ProductDetailPage() {
     setShowConfirmationPopup(false)
     setIsNavigating(true)
 
-    // Simulate navigation delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsNavigating(false)
+    try {
+      // Prepare order data for API
+      const orderData = {
+        items: [{
+          productId: product!._id,
+          name: product!.name,
+          farmerId: product!.farmerId._id,
+          price: product!.price,
+          quantity: quantity,
+          unit: product!.unit,
+        }],
+        totalAmount: (product!.price * quantity) + 5.99,
+        deliveryAddress: address,
+        deliveryInstructions: "",
+        paymentMethod: "credit_card",
+      }
+
+      // Send order to API
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to create order")
+      }
+
+      // Show success message
+      alert("Order placed successfully! You will receive a confirmation email shortly.")
+      
+      // Navigate to orders page
+      window.location.href = "/customer/profile"
+    } catch (error: any) {
+      console.error("Error creating order:", error)
+      alert("Failed to place order: " + error.message)
+    } finally {
+      setIsNavigating(false)
+    }
   }
 
   const renderStars = (rating: number) => {
@@ -140,24 +202,69 @@ export default function ProductDetailPage() {
     ))
   }
 
-  const orderItems = [
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  const getDaysUntilExpiry = (expiryDate: string) => {
+    const today = new Date()
+    const expiry = new Date(expiryDate)
+    const diffTime = expiry.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const orderItems = product ? [
     {
-      id: product.id,
+      id: product._id,
       name: product.name,
-      farmer: product.farmer,
+      farmer: product.farmerId.fullname,
       price: product.price,
       quantity: quantity,
       unit: product.unit,
     },
-  ]
+  ] : []
 
-  const total = product.price * quantity + 5.99 // Including delivery fee
+  const total = product ? product.price * quantity + 5.99 : 0 // Including delivery fee
+
+  if (loading) {
+    return (
+      <CustomerLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading product..." />
+        </div>
+      </CustomerLayout>
+    )
+  }
+
+  if (error || !product) {
+    return (
+      <CustomerLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <p className="text-red-600 text-lg mb-4">{error || "Product not found"}</p>
+            <Link href="/customer/products">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Products
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </CustomerLayout>
+    )
+  }
 
   if (isNavigating) {
     return (
       <CustomerLayout>
         <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" text="Loading..." />
+          <LoadingSpinner size="lg" text="Processing..." />
         </div>
       </CustomerLayout>
     )
@@ -168,7 +275,8 @@ export default function ProductDetailPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Breadcrumb */}
         <div className="text-sm text-gray-600">
-          <span>Products</span> / <span>{product.category}</span> /{" "}
+          <Link href="/customer/products" className="hover:text-blue-600">Products</Link> /{" "}
+          <Link href={`/customer/products?category=${product.category}`} className="hover:text-blue-600">{product.category}</Link> /{" "}
           <span className="text-blue-600">{product.name}</span>
         </div>
 
@@ -182,76 +290,115 @@ export default function ProductDetailPage() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex gap-2">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                    selectedImage === index ? "border-blue-500" : "border-gray-200"
-                  }`}
-                >
-                  <img
-                    src={image || "/placeholder.svg"}
-                    alt={`${product.name} ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            {product.images.length > 1 && (
+              <div className="flex gap-2">
+                {product.images.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                      selectedImage === index ? "border-blue-500" : "border-gray-200"
+                    }`}
+                  >
+                    <img
+                      src={image || "/placeholder.svg"}
+                      alt={`${product.name} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
           <div className="space-y-6">
             <div>
               <div className="flex items-start justify-between mb-2">
-                <h1 className="text-3xl font-bold text-blue-800">{product.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-800">{product.name}</h1>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   onClick={() => setIsFavorite(!isFavorite)}
-                  className={isFavorite ? "text-red-500 hover:text-red-600" : "text-gray-400 hover:text-red-500"}
+                  className={isFavorite ? "text-red-500" : "text-gray-400"}
                 >
                   <Heart className={`w-6 h-6 ${isFavorite ? "fill-current" : ""}`} />
                 </Button>
               </div>
-
-              <div className="flex items-center gap-2 mb-3">
+              
+              <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center gap-1">
-                  {renderStars(product.rating)}
-                  <span className="font-medium ml-1">{product.rating}</span>
+                  {renderStars(product.averageRating)}
+                  <span className="font-medium ml-1">{product.averageRating}</span>
+                  <span className="text-gray-500">({product.reviewCount} reviews)</span>
                 </div>
-                <span className="text-gray-500">({product.reviews} reviews)</span>
-                <Badge variant="outline">{product.category}</Badge>
+                <Badge variant="outline" className="text-green-600 border-green-200">
+                  {product.category}
+                </Badge>
+                {product.organic && (
+                  <Badge className="bg-green-600 text-white">
+                    <Leaf className="w-3 h-3 mr-1" />
+                    Organic
+                  </Badge>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 mb-4">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={product.farmerImage || "/placeholder.svg"} />
-                  <AvatarFallback>GV</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium text-gray-800">{product.farmer}</p>
-                  <p className="text-sm text-gray-600 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {product.location}
-                  </p>
-                </div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">
+                ${product.price}/{product.unit}
               </div>
 
-              <div className="text-3xl font-bold text-blue-600 mb-4">
-                ${product.price.toFixed(2)}
-                <span className="text-lg text-gray-500 font-normal">/{product.unit}</span>
-              </div>
-
-              {product.inStock ? (
-                <Badge className="bg-green-100 text-green-800">In Stock ({product.stockQuantity} available)</Badge>
-              ) : (
+              {product.quantity <= 0 ? (
                 <Badge variant="destructive">Out of Stock</Badge>
+              ) : (
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm">In Stock ({product.quantity} {product.unit} available)</span>
+                </div>
               )}
             </div>
 
             <Separator />
+
+            {/* Product Description */}
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-3">Product Description</h3>
+              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            </div>
+
+            {/* Product Details */}
+            <div className="grid grid-cols-2 gap-4">
+              {product.harvestDate && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Harvested</p>
+                    <p className="text-sm text-gray-600">{formatDate(product.harvestDate)}</p>
+                  </div>
+                </div>
+              )}
+              
+              {product.expiryDate && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-orange-600" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Best Before</p>
+                    <p className="text-sm text-gray-600">
+                      {formatDate(product.expiryDate)}
+                      {(() => {
+                        const daysUntil = getDaysUntilExpiry(product.expiryDate)
+                        if (daysUntil < 0) {
+                          return <span className="text-red-600 ml-1">(Expired)</span>
+                        } else if (daysUntil <= 3) {
+                          return <span className="text-orange-600 ml-1">({daysUntil} days left)</span>
+                        } else {
+                          return <span className="text-green-600 ml-1">({daysUntil} days left)</span>
+                        }
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Quantity and Add to Cart */}
             <div className="space-y-4">
@@ -274,7 +421,7 @@ export default function ProductDetailPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => updateQuantity(quantity + 1)}
-                    disabled={quantity >= product.stockQuantity}
+                    disabled={quantity >= product.quantity}
                     className="w-10 h-10 p-0"
                   >
                     <Plus className="w-4 h-4" />
@@ -285,15 +432,20 @@ export default function ProductDetailPage() {
               <div className="flex gap-3">
                 <Button
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  disabled={!product.inStock || isAddingToCart}
+                  disabled={product.quantity <= 0 || isAddingToCart}
                   onClick={handleAddToCart}
                 >
                   {isAddingToCart ? (
                     <LoadingSpinner size="sm" />
+                  ) : addToCartSuccess ? (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Added to Cart
+                    </div>
                   ) : (
                     <>
                       <ShoppingCart className="w-4 h-4 mr-2" />
-                      Add to Cart - ${(product.price * quantity).toFixed(2)}
+                      Add to Cart - ${(product.price * quantity)}
                     </>
                   )}
                 </Button>
@@ -301,7 +453,7 @@ export default function ProductDetailPage() {
                   variant="outline"
                   className="border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
                   onClick={handleBuyNow}
-                  disabled={!product.inStock}
+                  disabled={product.quantity <= 0}
                 >
                   Buy Now
                 </Button>
@@ -314,104 +466,91 @@ export default function ProductDetailPage() {
             <div>
               <h3 className="font-semibold text-gray-800 mb-3">Product Features</h3>
               <div className="space-y-2">
-                {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                {product.organic && (
+                  <div className="flex items-center gap-2">
                     <Leaf className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-gray-700">{feature}</span>
+                    <span className="text-sm text-gray-700">100% Organic Certified</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Delivery Info */}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Truck className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-blue-800">Delivery Information</span>
-              </div>
-              <div className="text-sm text-blue-700 space-y-1">
-                <p>• Free delivery on orders over $50</p>
-                <p>• Estimated delivery: 2-3 business days</p>
-                <p>• Fresh guarantee or money back</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-gray-700">Fresh from local farm</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-gray-700">Quality guaranteed</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Product Details Tabs */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-blue-800">Description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 leading-relaxed">{product.description}</p>
-
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">Harvested:</span>
-                  <span className="font-medium">{new Date(product.harvestDate).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Shield className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">Best Before:</span>
-                  <span className="font-medium">{new Date(product.bestBefore).toLocaleDateString()}</span>
-                </div>
+        {/* Farmer Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-blue-800">About the Farmer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <Avatar className="w-16 h-16">
+                <AvatarImage src="/placeholder-user.jpg" />
+                <AvatarFallback>{product.farmerId.fullname.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-semibold text-gray-800">{product.farmerId.fullname}</h3>
+                <p className="text-gray-600 flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {product.farmerId.FarmName}, {product.farmerId.FarmLocation}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Local farmer committed to providing fresh, quality produce
+                </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Tags:</p>
-                <div className="flex flex-wrap gap-2">
-                  {product.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Reviews */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-blue-800">Customer Reviews</CardTitle>
-              <CardDescription>
-                {product.rating} out of 5 stars ({product.reviews} reviews)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
+        {/* Reviews */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-blue-800">Customer Reviews</CardTitle>
+            <CardDescription>
+              {product.averageRating} out of 5 stars ({product.reviewCount} reviews)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {reviews.length > 0 ? (
+                reviews.map((review) => (
+                  <div key={review._id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-800">{review.user}</span>
+                        <span className="font-medium text-gray-800">{review.customerId.fullName}</span>
                         <div className="flex">{renderStars(review.rating)}</div>
                       </div>
-                      <span className="text-sm text-gray-500">{new Date(review.date).toLocaleDateString()}</span>
+                      <span className="text-sm text-gray-500">{formatDate(review.createdAt)}</span>
                     </div>
                     <p className="text-gray-700 text-sm">{review.comment}</p>
                   </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                className="w-full mt-4 border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
-              >
-                View All Reviews
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No reviews yet. Be the first to review this product!</p>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full mt-4 border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
+            >
+              View All Reviews
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Order Confirmation Popup */}
         <OrderConfirmationPopup
           isOpen={showConfirmationPopup}
           onClose={() => setShowConfirmationPopup(false)}
-          items={orderItems}
+          items={orderItems as any}
           total={total}
           onConfirm={handleOrderConfirm}
         />
