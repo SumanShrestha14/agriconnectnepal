@@ -155,7 +155,7 @@ export default function FarmerDashboard() {
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-800">${dashboardData.stats.totalRevenue.toLocaleString()}</div>
+                              <div className="text-2xl font-bold text-green-800">Rs {dashboardData.stats.totalRevenue.toLocaleString()}</div>
               <p className={`text-xs flex items-center mt-1 ${getGrowthColor(dashboardData.stats.revenueGrowth)}`}>
                 {getGrowthIcon(dashboardData.stats.revenueGrowth)}
                 {getGrowthText(dashboardData.stats.revenueGrowth)}
@@ -227,7 +227,7 @@ export default function FarmerDashboard() {
                       borderRadius: "8px",
                     }}
                     formatter={(value: any, name: any) => [
-                      name === "sales" ? `$${value}` : value,
+                      name === "sales" ? `Rs ${value}` : value,
                       name === "sales" ? "Revenue" : "Orders"
                     ]}
                   />
@@ -275,7 +275,7 @@ export default function FarmerDashboard() {
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm text-gray-600 truncate block">{item.name}</span>
-                          <span className="text-xs text-gray-500">${item.revenue}</span>
+                          <span className="text-xs text-gray-500">Rs {item.revenue}</span>
                         </div>
                       </div>
                     ))}

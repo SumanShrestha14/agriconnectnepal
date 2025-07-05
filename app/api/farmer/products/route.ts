@@ -14,70 +14,25 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const { searchParams } = new URL(req.url);
-    const category = searchParams.get("category");
-    const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const page = parseInt(searchParams.get("page") || "1");
-
-    const filter: any = {
-      farmerId: session.user.id,
-    };
-
-    if (category && category !== "all") {
-      filter.category = category;
-    }
-
-    if (status) {
-      filter.status = status;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const products = await Product.find(filter)
+    const products = await Product.find({ farmerId: session.user.id })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .lean();
 
-    const total = await Product.countDocuments(filter);
-
-    // Calculate stats for each product
-    const productsWithStats = await Promise.all(
-      products.map(async (product) => {
-        const Order = (await import("@/models/Order")).default;
-        const Review = (await import("@/models/Review")).default;
-
-        // Get order count for this product
-        const orderCount = await Order.countDocuments({
-          "items.productId": product._id,
-          status: { $in: ["confirmed", "processing", "shipped", "delivered"] },
-        });
-
-        // Get review stats for this product
-        const reviews = await Review.find({ productId: product._id });
-        const averageRating = reviews.length > 0 
-          ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
-          : 0;
-
-        return {
-          ...product,
-          orderCount,
-          averageRating: Math.round(averageRating * 10) / 10,
-          reviewCount: reviews.length,
-        };
-      })
-    );
-
     return NextResponse.json({
-      products: productsWithStats,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalProducts: total,
-        hasNextPage: page * limit < total,
-        hasPrevPage: page > 1,
-      },
+      products: products.map(product => ({
+        _id: product._id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        quantity: product.quantity,
+        unit: product.unit,
+        description: product.description,
+        images: product.images,
+        organic: product.organic,
+        harvestDate: product.harvestDate,
+        expiryDate: product.expiryDate,
+        createdAt: product.createdAt,
+      }))
     });
   } catch (error: any) {
     console.error("Error fetching farmer products:", error);

@@ -227,22 +227,6 @@ export function CustomerLayout({ children }: { children: React.ReactNode }) {
               <h2 className="font-bold text-blue-800 text-lg">AgriConnect</h2>
             </div>
           </div>
-{/* 
-          <div className="flex-1 flex items-center gap-4">
-            <div className="relative max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 w-4 h-4" />
-              <Input
-                placeholder="Search products, farmers..."
-                className="pl-10 border-blue-200 focus:border-blue-400 focus:ring-blue-400"
-              />
-            </div>
-          </div> */}
-          {/* <Button variant="ghost" size="icon" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 relative">
-            <Bell className="w-5 h-5" />
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
-              2
-            </Badge>
-          </Button> */}
         </header>
         <main className="flex-1 p-6 bg-gradient-to-br from-blue-50/30 via-cyan-50/30 to-teal-50/30">{children}</main>
       </SidebarInset>

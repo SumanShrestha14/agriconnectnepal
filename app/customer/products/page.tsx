@@ -269,7 +269,7 @@ export default function ProductsPage() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-blue-600">${product.price}</span>
+                    <span className="text-2xl font-bold text-blue-600">Rs {product.price}</span>
                     <span className="text-gray-500 ml-1">/{product.unit}</span>
                   </div>
                   <div className="flex gap-2">

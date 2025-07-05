@@ -114,7 +114,7 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
                   <strong>Order ID:</strong> {orderId}
                 </p>
                 <p className="text-green-700">
-                  <strong>Total:</strong> ${total}
+                  <strong>Total:</strong> Rs {total}
                 </p>
                 <p className="text-green-700">
                   <strong>Items:</strong> {items.length} product{items.length > 1 ? "s" : ""}
@@ -168,17 +168,17 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
                     <p className="font-medium text-gray-800">{item.name}</p>
                     <p className="text-sm text-gray-600">{item.farmer}</p>
                     <p className="text-sm text-blue-600">
-                      {item.quantity} {item.unit} × ${item.price}
+                      {item.quantity} {item.unit} × Rs {item.price}
                     </p>
                   </div>
-                  <p className="font-bold text-blue-600">${(item.price * item.quantity)}</p>
+                  <p className="font-bold text-blue-600">Rs {(item.price * item.quantity)}</p>
                 </div>
               ))}
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between items-center text-lg font-bold">
               <span>Total Amount:</span>
-              <span className="text-blue-600">${total}</span>
+                              <span className="text-blue-600">Rs {total}</span>
             </div>
           </div>
 
@@ -244,7 +244,7 @@ export function OrderConfirmationPopup({ isOpen, onClose, items, total, onConfir
               disabled={!deliveryAddress.trim()}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
-              Confirm Order - ${total}
+              Confirm Order - Rs {total}
             </Button>
           </div>
         </div>

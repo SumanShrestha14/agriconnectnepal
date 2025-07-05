@@ -221,7 +221,7 @@ export default function FavoritesPage() {
 
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <span className="text-2xl font-bold text-blue-600">${product.price}</span>
+                    <span className="text-2xl font-bold text-blue-600">Rs {product.price}</span>
                     <span className="text-gray-500 ml-1">/{product.unit}</span>
                   </div>
                   <span className="text-xs text-gray-400">

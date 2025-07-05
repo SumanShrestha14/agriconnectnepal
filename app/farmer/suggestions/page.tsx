@@ -17,7 +17,7 @@ const suggestions = [
       "There's a 40% increase in demand for organic lettuce in your area. Consider planting more for the next season.",
     priority: "High",
     category: "Crop Planning",
-    impact: "Revenue increase of $2,000-3,500",
+            impact: "Revenue increase of Rs 2,000-3,500",
     timeframe: "Next planting season",
     confidence: 85,
     icon: TrendingUp,
@@ -44,7 +44,7 @@ const suggestions = [
     type: "Price Optimization",
     title: "Adjust Carrot Pricing",
     description:
-      "Your carrot prices are 15% below market average. Consider increasing prices to $2.65/kg to maximize revenue.",
+              "Your carrot prices are 15% below market average. Consider increasing prices to Rs 2.65/kg to maximize revenue.",
     priority: "Medium",
     category: "Pricing",
     impact: "15% revenue increase",
@@ -86,10 +86,10 @@ const suggestions = [
 ]
 
 const marketTrends = [
-  { crop: "Organic Lettuce", demand: 85, trend: "up", price: "$3.20/kg" },
-  { crop: "Cherry Tomatoes", demand: 72, trend: "up", price: "$6.50/kg" },
-  { crop: "Bell Peppers", demand: 68, trend: "stable", price: "$4.80/kg" },
-  { crop: "Spinach", demand: 45, trend: "down", price: "$2.90/kg" },
+        { crop: "Organic Lettuce", demand: 85, trend: "up", price: "Rs 3.20/kg" },
+      { crop: "Cherry Tomatoes", demand: 72, trend: "up", price: "Rs 6.50/kg" },
+      { crop: "Bell Peppers", demand: 68, trend: "stable", price: "Rs 4.80/kg" },
+      { crop: "Spinach", demand: 45, trend: "down", price: "Rs 2.90/kg" },
 ]
 
 export default function SuggestionsPage() {

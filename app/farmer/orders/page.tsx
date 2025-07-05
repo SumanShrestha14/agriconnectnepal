@@ -237,7 +237,7 @@ export default function FarmerOrdersPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <DollarSign className="w-4 h-4" />
-                          ${order.totalAmount}
+                          Rs {order.totalAmount}
                         </span>
                       </CardDescription>
                     </div>
@@ -303,11 +303,11 @@ export default function FarmerOrdersPage() {
                           <div className="flex-1">
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-gray-600">
-                              {item.quantity} {item.unit} × ${item.price}
+                              {item.quantity} {item.unit} × Rs {item.price}
                             </p>
                           </div>
                           <p className="font-bold text-green-600">
-                            ${(item.price * item.quantity)}
+                            Rs {(item.price * item.quantity)}
                           </p>
                         </div>
                       ))}
@@ -319,7 +319,7 @@ export default function FarmerOrdersPage() {
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Total Amount</p>
                       <p className="text-2xl font-bold text-green-600">
-                        ${(order.totalAmount + order.deliveryFee)}
+                        Rs {(order.totalAmount + order.deliveryFee)}
                       </p>
                     </div>
                     <div className="flex gap-2">

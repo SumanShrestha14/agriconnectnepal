@@ -10,62 +10,198 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FarmerLayout } from "@/components/farmer-layout"
-import { Edit, Save, X, MapPin, Phone, Mail, Star, Package, TrendingUp, ShoppingBag, MessageSquare } from "lucide-react"
+import { Edit, Save, X, MapPin, Phone, Mail, Star, Package, TrendingUp, ShoppingBag, MessageSquare, User, Calendar, DollarSign, Leaf, Truck, CheckCircle, AlertCircle, Clock, BarChart3, Users, Sprout, Eye } from "lucide-react"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { useSession } from "next-auth/react"
+import { useToast } from "@/hooks/use-toast"
+
+interface FarmerProfile {
+  id: string;
+  fullname: string;
+  email: string;
+  phoneNumber: number;
+  FarmName: string;
+  FarmLocation: string;
+  FarmDescription: string;
+  profilePicture?: {
+    data: Buffer;
+    contentType: string;
+  };
+  deliveryRadius?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Product {
+  _id: string;
+  name: string;
+  category: string;
+  price: number;
+  quantity: number;
+  unit: string;
+  description: string;
+  images: string[];
+  organic: boolean;
+  harvestDate?: string;
+  expiryDate?: string;
+  createdAt: string;
+}
 
 export default function FarmerProfilePage() {
+  const { data: session } = useSession()
+  const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
-  const [receivedOrders, setReceivedOrders] = useState([])
-  const [profileData, setProfileData] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    farmName: "Green Valley Farm",
-    location: "California, USA",
-    bio: "Organic farmer with 15+ years of experience growing fresh vegetables and fruits. Committed to sustainable farming practices and providing the highest quality produce to our community.",
-    specialties: ["Organic Vegetables", "Seasonal Fruits", "Herbs"],
-    certifications: ["USDA Organic", "Fair Trade", "Sustainable Agriculture"],
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [profileData, setProfileData] = useState<FarmerProfile | null>(null)
+  const [editData, setEditData] = useState({
+    fullname: "",
+    phoneNumber: "",
+    FarmName: "",
+    FarmLocation: "",
+    FarmDescription: "",
+    deliveryRadius: "",
   })
 
   useEffect(() => {
-    // Simulate received orders - in real app this would come from backend
-    const mockOrders = [
-      {
-        id: "ORD-1234567890",
-        customerName: "Sarah Johnson",
-        items: [{ name: "Organic Tomatoes", quantity: 2, unit: "kg", price: 4.5 }],
-        total: 15.49,
-        date: new Date().toISOString(),
-        status: "confirmed",
-        customerAddress: "123 Main St, San Francisco, CA",
-      },
-      {
-        id: "ORD-1234567891",
-        customerName: "Mike Wilson",
-        items: [
-          { name: "Fresh Strawberries", quantity: 1, unit: "kg", price: 8.99 },
-          { name: "Organic Carrots", quantity: 2, unit: "kg", price: 2.3 },
-        ],
-        total: 19.58,
-        date: new Date(Date.now() - 86400000).toISOString(),
-        status: "processing",
-        customerAddress: "456 Oak Ave, Los Angeles, CA",
-      },
-    ]
-    setReceivedOrders(mockOrders)
+    fetchProfile()
+    fetchProducts()
   }, [])
 
-  const handleSave = () => {
-    setIsEditing(false)
-    // Here you would typically save to your backend
+  const fetchProfile = async () => {
+    try {
+      setProfileLoading(true)
+      const response = await fetch("/api/farmer/profile", {
+        credentials: "include"
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile")
+      }
+      
+      const data = await response.json()
+      setProfileData(data.profile)
+      setEditData({
+        fullname: data.profile.fullname,
+        phoneNumber: data.profile.phoneNumber.toString(),
+        FarmName: data.profile.FarmName,
+        FarmLocation: data.profile.FarmLocation,
+        FarmDescription: data.profile.FarmDescription,
+        deliveryRadius: data.profile.deliveryRadius?.toString() || "",
+      })
+    } catch (err: any) {
+      setError(err.message || "Failed to load profile")
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/farmer/products", {
+        credentials: "include"
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch products")
+      }
+      
+      const data = await response.json()
+      setProducts(data.products || [])
+    } catch (err: any) {
+      console.error("Failed to fetch products:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      
+      const response = await fetch("/api/farmer/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          fullname: editData.fullname,
+          phoneNumber: parseInt(editData.phoneNumber),
+          FarmName: editData.FarmName,
+          FarmLocation: editData.FarmLocation,
+          FarmDescription: editData.FarmDescription,
+          deliveryRadius: editData.deliveryRadius ? parseInt(editData.deliveryRadius) : undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update profile")
+      }
+
+      const data = await response.json()
+      setProfileData(data.profile)
+      setIsEditing(false)
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your farm profile has been updated successfully.",
+      })
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update profile",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCancel = () => {
     setIsEditing(false)
-    // Reset any changes
+    setEditData({
+      fullname: profileData?.fullname || "",
+      phoneNumber: profileData?.phoneNumber?.toString() || "",
+      FarmName: profileData?.FarmName || "",
+      FarmLocation: profileData?.FarmLocation || "",
+      FarmDescription: profileData?.FarmDescription || "",
+      deliveryRadius: profileData?.deliveryRadius?.toString() || "",
+    })
   }
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
-    setReceivedOrders((prev) => prev.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)))
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  const getProductStats = () => {
+    const totalProducts = products.length
+    const activeProducts = products.filter(product => product.quantity > 0).length
+    const organicProducts = products.filter(product => product.organic).length
+    const totalValue = products.reduce((sum, product) => sum + (product.price * product.quantity), 0)
+    
+    return { totalProducts, activeProducts, organicProducts, totalValue }
+  }
+
+  const stats = getProductStats()
+
+  if (profileLoading) {
+    return (
+      <FarmerLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading profile..." />
+        </div>
+      </FarmerLayout>
+    )
   }
 
   return (
@@ -73,7 +209,7 @@ export default function FarmerProfilePage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-green-800">Profile</h1>
+            <h1 className="text-3xl font-bold text-green-800">Farm Profile</h1>
             <p className="text-green-600">Manage your farm profile and information</p>
           </div>
           {!isEditing ? (
@@ -83,11 +219,11 @@ export default function FarmerProfilePage() {
             </Button>
           ) : (
             <div className="flex gap-2">
-              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700">
                 <Save className="w-4 h-4 mr-2" />
-                Save
+                {saving ? "Saving..." : "Save"}
               </Button>
-              <Button onClick={handleCancel} variant="outline">
+              <Button onClick={handleCancel} variant="outline" disabled={saving}>
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
@@ -95,12 +231,63 @@ export default function FarmerProfilePage() {
           )}
         </div>
 
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-green-100 bg-gradient-to-br from-green-50 to-emerald-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <Package className="w-8 h-8 text-green-600" />
+                <div>
+                  <p className="text-sm text-green-600">Total Products</p>
+                  <p className="text-2xl font-bold text-green-800">{stats.totalProducts}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-8 h-8 text-blue-600" />
+                <div>
+                  <p className="text-sm text-blue-600">Active Products</p>
+                  <p className="text-2xl font-bold text-blue-800">{stats.activeProducts}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-yellow-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <Leaf className="w-8 h-8 text-orange-600" />
+                <div>
+                  <p className="text-sm text-orange-600">Organic Products</p>
+                  <p className="text-2xl font-bold text-orange-800">{stats.organicProducts}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-purple-600" />
+                <div>
+                  <p className="text-sm text-purple-600">Inventory Value</p>
+                  <p className="text-2xl font-bold text-purple-800">Rs {stats.totalValue.toFixed(2)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Tabs defaultValue="personal" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="farm">Farm Details</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="orders">Received Orders</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -114,89 +301,60 @@ export default function FarmerProfilePage() {
                 <div className="flex items-center gap-6">
                   <Avatar className="w-24 h-24">
                     <AvatarImage src="/placeholder.svg?height=96&width=96" />
-                    <AvatarFallback className="text-2xl bg-green-100 text-green-700">JD</AvatarFallback>
+                    <AvatarFallback className="text-2xl bg-green-100 text-green-700">
+                      {profileData?.fullname?.charAt(0) || "F"}
+                    </AvatarFallback>
                   </Avatar>
                   {isEditing && <Button variant="outline">Change Photo</Button>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
                     {isEditing ? (
                       <Input
                         id="name"
-                        value={profileData.name}
-                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                        className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{profileData.name}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    {isEditing ? (
-                      <Input
-                        id="email"
-                        type="email"
-                        value={profileData.email}
-                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                        value={editData.fullname}
+                        onChange={(e) => setEditData({ ...editData, fullname: e.target.value })}
                         className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
                       />
                     ) : (
                       <p className="text-sm font-medium flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        {profileData.email}
+                        <User className="w-4 h-4" />
+                        {profileData?.fullname}
                       </p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="email">Email</Label>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      {profileData?.email}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
                     {isEditing ? (
                       <Input
                         id="phone"
-                        value={profileData.phone}
-                        onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                        value={editData.phoneNumber}
+                        onChange={(e) => setEditData({ ...editData, phoneNumber: e.target.value })}
                         className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
                       />
                     ) : (
                       <p className="text-sm font-medium flex items-center gap-2">
                         <Phone className="w-4 h-4" />
-                        {profileData.phone}
+                        {profileData?.phoneNumber}
                       </p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    {isEditing ? (
-                      <Input
-                        id="location"
-                        value={profileData.location}
-                        onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
-                        className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        {profileData.location}
-                      </p>
-                    )}
+                    <Label>Member Since</Label>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {profileData?.createdAt ? formatDate(profileData.createdAt) : "N/A"}
+                    </p>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  {isEditing ? (
-                    <Textarea
-                      id="bio"
-                      value={profileData.bio}
-                      onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                      rows={4}
-                      className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{profileData.bio}</p>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -206,43 +364,74 @@ export default function FarmerProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Farm Information</CardTitle>
-                <CardDescription>Details about your farm and specialties</CardDescription>
+                <CardDescription>Details about your farm and operations</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="farmName">Farm Name</Label>
+                    {isEditing ? (
+                      <Input
+                        id="farmName"
+                        value={editData.FarmName}
+                        onChange={(e) => setEditData({ ...editData, FarmName: e.target.value })}
+                        className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <Sprout className="w-4 h-4" />
+                        {profileData?.FarmName}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="farmLocation">Farm Location</Label>
+                    {isEditing ? (
+                      <Input
+                        id="farmLocation"
+                        value={editData.FarmLocation}
+                        onChange={(e) => setEditData({ ...editData, FarmLocation: e.target.value })}
+                        className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        {profileData?.FarmLocation}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deliveryRadius">Delivery Radius (km)</Label>
+                    {isEditing ? (
+                      <Input
+                        id="deliveryRadius"
+                        type="number"
+                        value={editData.deliveryRadius}
+                        onChange={(e) => setEditData({ ...editData, deliveryRadius: e.target.value })}
+                        className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <Truck className="w-4 h-4" />
+                        {profileData?.deliveryRadius || 0} km
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="farmName">Farm Name</Label>
+                  <Label htmlFor="farmDescription">Farm Description</Label>
                   {isEditing ? (
-                    <Input
-                      id="farmName"
-                      value={profileData.farmName}
-                      onChange={(e) => setProfileData({ ...profileData, farmName: e.target.value })}
+                    <Textarea
+                      id="farmDescription"
+                      value={editData.FarmDescription}
+                      onChange={(e) => setEditData({ ...editData, FarmDescription: e.target.value })}
+                      rows={4}
                       className="border-gray-300 focus:border-green-500 focus:ring-green-500 focus:ring-1 focus:outline-none"
                     />
                   ) : (
-                    <p className="text-lg font-semibold text-green-700">{profileData.farmName}</p>
+                    <p className="text-sm text-muted-foreground">{profileData?.FarmDescription}</p>
                   )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Specialties</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {profileData.specialties.map((specialty, index) => (
-                      <Badge key={index} variant="secondary" className="bg-green-100 text-green-800">
-                        {specialty}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Certifications</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {profileData.certifications.map((cert, index) => (
-                      <Badge key={index} className="bg-green-600 text-white">
-                        {cert}
-                      </Badge>
-                    ))}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -251,124 +440,64 @@ export default function FarmerProfilePage() {
           <TabsContent value="products" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Product Overview</CardTitle>
-                <CardDescription>Your current product listings and performance</CardDescription>
+                <CardTitle>Your Products</CardTitle>
+                <CardDescription>Manage your product inventory</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <Package className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                    <p className="text-2xl font-bold text-green-800">24</p>
-                    <p className="text-sm text-green-600">Active Products</p>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="md" text="Loading products..." />
                   </div>
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <Star className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                    <p className="text-2xl font-bold text-blue-800">4.8</p>
-                    <p className="text-sm text-blue-600">Average Rating</p>
-                  </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <TrendingUp className="w-8 h-8 mx-auto mb-2 text-orange-600" />
-                    <p className="text-2xl font-bold text-orange-800">156</p>
-                    <p className="text-sm text-orange-600">Total Orders</p>
-                  </div>
-                </div>
-                <Button className="w-full bg-green-600 hover:bg-green-700">Manage Products</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="orders" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5" />
-                  Received Orders
-                </CardTitle>
-                <CardDescription>Orders from customers for your products</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {receivedOrders.length === 0 ? (
+                ) : products.length === 0 ? (
                   <div className="text-center py-8">
-                    <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">No orders received yet</p>
-                    <p className="text-sm text-gray-400 mt-1">Customer orders will appear here</p>
+                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No products yet</p>
+                    <p className="text-gray-400 mt-2">Start adding products to your inventory</p>
+                    <Button className="mt-4 bg-green-600 hover:bg-green-700">
+                      Add Product
+                    </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {receivedOrders.map((order) => (
-                      <div key={order.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-medium text-green-800">Order {order.id}</h4>
-                            <p className="text-sm text-gray-600">Customer: {order.customerName}</p>
-                            <p className="text-sm text-gray-600">{new Date(order.date).toLocaleDateString()}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products.map((product) => (
+                      <Card key={product._id} className="border-green-100">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-medium text-green-800">{product.name}</h3>
+                            {product.organic && (
+                              <Badge className="bg-green-100 text-green-800">
+                                <Leaf className="w-3 h-3 mr-1" />
+                                Organic
+                              </Badge>
+                            )}
                           </div>
-                          <div className="text-right">
-                            <Badge
-                              className={
-                                order.status === "confirmed"
-                                  ? "bg-green-100 text-green-800"
-                                  : order.status === "processing"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-blue-100 text-blue-800"
-                              }
-                            >
-                              {order.status}
-                            </Badge>
-                            <p className="text-lg font-bold text-green-600 mt-1">${order.total}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 mb-3">
-                          <p className="text-sm font-medium">Items:</p>
-                          {order.items.map((item, index) => (
-                            <div
-                              key={index}
-                              className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded"
-                            >
-                              <span>
-                                {item.name} ({item.quantity} {item.unit})
-                              </span>
-                              <span className="font-medium">${(item.price * item.quantity)}</span>
+                          <p className="text-sm text-gray-600 mb-2">{product.description}</p>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span>Price:</span>
+                              <span className="font-medium">Rs {product.price}/{product.unit}</span>
                             </div>
-                          ))}
-                        </div>
-
-                        <div className="text-sm text-gray-600 mb-3">
-                          <p>
-                            <strong>Delivery Address:</strong> {order.customerAddress}
-                          </p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {order.status === "confirmed" && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleUpdateOrderStatus(order.id, "processing")}
-                              className="bg-yellow-600 hover:bg-yellow-700"
-                            >
-                              Start Processing
+                            <div className="flex justify-between">
+                              <span>Quantity:</span>
+                              <span className="font-medium">{product.quantity} {product.unit}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Category:</span>
+                              <span className="font-medium">{product.category}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <Button variant="outline" size="sm" className="flex-1">
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
                             </Button>
-                          )}
-                          {order.status === "processing" && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleUpdateOrderStatus(order.id, "shipped")}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              Mark as Shipped
+                            <Button variant="outline" size="sm" className="flex-1">
+                              <Eye className="w-3 h-3 mr-1" />
+                              View
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => alert(`Contact customer: ${order.customerName}`)}
-                          >
-                            <MessageSquare className="w-3 h-3 mr-1" />
-                            Contact Customer
-                          </Button>
-                        </div>
-                      </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -376,48 +505,33 @@ export default function FarmerProfilePage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="orders" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Orders</CardTitle>
+                <CardDescription>Orders from your customers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">No orders yet</p>
+                  <p className="text-gray-400 mt-2">Orders from customers will appear here</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="analytics" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Performance Analytics</CardTitle>
-                <CardDescription>Track your farm's performance and growth</CardDescription>
+                <CardTitle>Farm Analytics</CardTitle>
+                <CardDescription>Performance insights and trends</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h4 className="font-semibold">This Month</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Revenue</span>
-                        <span className="font-medium">$2,450</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Orders</span>
-                        <span className="font-medium">32</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">New Customers</span>
-                        <span className="font-medium">8</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="font-semibold">Growth</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Revenue Growth</span>
-                        <span className="font-medium text-green-600">+12%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Order Growth</span>
-                        <span className="font-medium text-green-600">+8%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Customer Growth</span>
-                        <span className="font-medium text-green-600">+15%</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="text-center py-8">
+                  <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">Analytics coming soon</p>
+                  <p className="text-gray-400 mt-2">Detailed analytics and insights will be available here</p>
                 </div>
               </CardContent>
             </Card>
