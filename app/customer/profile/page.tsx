@@ -56,7 +56,9 @@ export default function CustomerProfilePage() {
       setLoading(true)
       setError("")
       
-      const response = await fetch("/api/orders")
+      const response = await fetch("/api/orders", {
+      credentials: "include"
+    })
       
       if (!response.ok) {
         throw new Error("Failed to fetch orders")

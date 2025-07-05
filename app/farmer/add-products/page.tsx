@@ -149,6 +149,7 @@ export default function AddProductsPage() {
       }
 
       const res = await fetch("/api/auth/Farmer/AddProducts", {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productData),

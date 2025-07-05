@@ -168,6 +168,7 @@ export default function ProductDetailPage() {
 
       // Send order to API
       const response = await fetch("/api/orders", {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",

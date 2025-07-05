@@ -89,7 +89,9 @@ export default function FarmerOrdersPage() {
         params.append("status", selectedStatus)
       }
 
-      const response = await fetch(`/api/orders?${params}`)
+      const response = await fetch(`/api/orders?${params}`, {
+      credentials: "include"
+    })
       
       if (!response.ok) {
         throw new Error("Failed to fetch orders")
@@ -113,6 +115,7 @@ export default function FarmerOrdersPage() {
       setUpdatingOrder(orderId)
       
       const response = await fetch(`/api/orders/${orderId}`, {
+        credentials: "include",
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

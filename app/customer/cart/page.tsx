@@ -126,6 +126,7 @@ export default function CartPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include session cookies
         body: JSON.stringify(orderData),
       })
 
